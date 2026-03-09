@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   BarChart2,
   Activity,
@@ -13,8 +13,9 @@ import { Header } from "@/components/Header";
 import { InfoBanner } from "@/components/InfoBanner";
 import { ToolCard } from "@/components/ToolCard";
 import { UpdateNotification } from "@/components/UpdateNotification";
+import { LoginPage } from "@/components/LoginPage";
 import { categories, tools } from "@/data/tools";
-import { getCurrentUser } from "@/services/userService";
+import { getCurrentUser, type AppUser } from "@/services/userService";
 
 const FAVORITES_KEY = "belinda-favorites";
 
@@ -36,10 +37,17 @@ function getFavorites(): string[] {
 }
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+  const [sessionUser, setSessionUser] = useState<AppUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoritesVersion, setFavoritesVersion] = useState(0);
   const [authVersion, setAuthVersion] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+    setSessionUser(getCurrentUser());
+  }, []);
 
   const refreshFavorites = useCallback(() => {
     setFavoritesVersion((v) => v + 1);
@@ -47,6 +55,7 @@ export default function Home() {
 
   const handleAuthChange = useCallback(() => {
     setAuthVersion((v) => v + 1);
+    setSessionUser(getCurrentUser());
   }, []);
 
   const filteredTools = useMemo(() => {
@@ -92,6 +101,14 @@ export default function Home() {
   const handleFavoritesClick = useCallback(() => {
     setShowFavoritesOnly((v) => !v);
   }, []);
+
+  // SSR: nothing until mounted (avoids hydration mismatch)
+  if (!mounted) return null;
+
+  // Auth guard
+  if (!sessionUser) {
+    return <LoginPage onLogin={(user) => { setSessionUser(user); setAuthVersion((v) => v + 1); }} />;
+  }
 
   return (
     <div className="min-h-screen bg-[var(--background)]">

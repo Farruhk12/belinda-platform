@@ -21,6 +21,7 @@ import {
   getCurrentUser,
   type AppUser,
 } from "@/services/userService";
+import { LoginPage } from "@/components/LoginPage";
 import { tools } from "@/data/tools";
 
 type FormState = {
@@ -131,7 +132,11 @@ export default function AdminPage() {
 
   if (!mounted) return null;
 
-  if (!currentUser || currentUser.role !== "admin") {
+  if (!currentUser) {
+    return <LoginPage onLogin={(user) => setCurrentUser(user)} />;
+  }
+
+  if (currentUser.role !== "admin") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--background)]">
         <div className="text-center">
@@ -139,7 +144,7 @@ export default function AdminPage() {
             <Shield className="h-6 w-6 text-red-400" strokeWidth={1.5} />
           </div>
           <p className="text-sm font-medium text-slate-600">Нет доступа</p>
-          <p className="mt-1 text-xs text-slate-400">Войдите как администратор</p>
+          <p className="mt-1 text-xs text-slate-400">Этот раздел только для администраторов</p>
           <a href="/" className="mt-4 inline-block text-xs text-[var(--primary)] underline">← На главную</a>
         </div>
       </div>
