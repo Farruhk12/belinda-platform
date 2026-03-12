@@ -1,5 +1,5 @@
 // ================================================================
-// BELINDA PLATFORM — Управление пользователями
+// BELINDA PLATFORM — Управление пользователями и инструментами
 // Google Apps Script
 // ================================================================
 //
@@ -20,9 +20,13 @@
 //
 // ВАЖНО: после любых изменений в коде нужно создавать
 //        НОВЫЙ деплой (не обновлять старый)
+//
+// ИНСТРУМЕНТЫ: после setup() откройте /admin/tools и нажмите
+//              "Создать таблицу инструментов" для редактирования ссылок.
 // ================================================================
 
 var SHEET_NAME = 'Пользователи';
+var SHEET_TOOLS = 'Инструменты';
 
 // ── Точки входа ──────────────────────────────────────────────────
 
@@ -49,6 +53,9 @@ function handleAction(payload) {
     case 'createUser': return createUser(payload.data);
     case 'updateUser': return updateUser(payload.id, payload.data);
     case 'deleteUser': return deleteUser(payload.id);
+    case 'getTools':   return { success: true, data: readTools() };
+    case 'updateTool': return updateTool(payload.id, payload.data);
+    case 'setupTools': setupTools(); return { success: true, message: 'Таблица инструментов создана' };
     default:           return { success: false, error: 'Неизвестное действие: ' + payload.action };
   }
 }
@@ -110,6 +117,92 @@ function setup() {
   );
 
   return { success: true, message: 'Готово. Администратор: admin / admin' };
+}
+
+// ── Инструменты (лист "Инструменты") ──────────────────────────────
+
+var DEFAULT_TOOLS = [
+  ['bdc','База данных клиентов (БДК)','Аналитика базы врачей, взаимодействия с ними, бонусов, групп и продуктов.','https://belinda-lab-bdc-66063717455.us-west1.run.app/','analytics','0'],
+  ['visit-analytics','Аналитика визитов','Аналитика визитов медицинских представителей по РТ.','https://belinda-lab-mp-visit-analytics-66063717455.us-west1.run.app/','analytics','0'],
+  ['lab-dashboard','Belinda Lab Dashboard','Подробная аналитика продаж, ABC анализ и сравнение показателей.','https://belinda-dashboard-66063717455.us-west1.run.app/','analytics','0'],
+  ['mp-analytics','Аналитика МП','AI-аналитика работы МП с врачами на основе визитов, бонусов и рецептов.','https://belinda-analytics.vercel.app/','analytics','1'],
+  ['crm','CRM визитов','Фиксация визитов и отслеживание маршрутов МП.','https://crm.belinda.tj','medical','0'],
+  ['checks','Система проверки чеков','Отправка чеков после выдачи бонусов врачам и контроль их проверки.','https://uvk-all.vercel.app/','medical','0'],
+  ['1c','Платформа 1С','Основная операционная система работы МП и аналитиков.','https://1c.belinda.tj/Belinda/ru/','medical','0'],
+  ['validation','Аттестация сотрудников','Система тестирования и проверки знаний сотрудников.','https://belinda-66063717455.us-west1.run.app/#/validation','learning','0'],
+  ['products','Карманный справочник продуктов','База знаний по продуктам с поддержкой AI.','https://belindalab.github.io/products/','learning','1'],
+  ['hr','HR платформа','Управление кандидатами, стажерами и сотрудниками.','https://hr-platform-three.vercel.app/employees','internal','0'],
+  ['feedback','Belinda Feedback','Анонимная система обратной связи.','https://voicein-66063717455.us-west1.run.app/','internal','1'],
+  ['contacts','Контакты сотрудников','База телефонов сотрудников.','https://employee-contacts-66063717455.us-west1.run.app/','internal','0'],
+  ['warehouse','Склад','Информация о складских остатках и сроках продукции.','https://belinda-warehouse-66063717455.us-west1.run.app/','internal','0'],
+  ['telegram-bot','Корпоративный Telegram бот','Цифровой помощник сотрудников с доступом к внутренним функциям.','https://t.me/analitik_belinda_bot','automation','0']
+];
+
+function setupTools() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_TOOLS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_TOOLS);
+  } else {
+    sheet.clear();
+  }
+  var headers = [['ID','Название','Описание','URL','Категория','Новое (0/1)']];
+  sheet.getRange(1,1,1,6).setValues(headers);
+  sheet.getRange(1,1,1,6).setBackground('#0f172a').setFontColor('#ffffff').setFontWeight('bold');
+  sheet.setFrozenRows(1);
+  sheet.setColumnWidth(1,120);
+  sheet.setColumnWidth(2,220);
+  sheet.setColumnWidth(3,380);
+  sheet.setColumnWidth(4,380);
+  sheet.setColumnWidth(5,120);
+  sheet.setColumnWidth(6,80);
+  for (var i = 0; i < DEFAULT_TOOLS.length; i++) {
+    sheet.appendRow(DEFAULT_TOOLS[i]);
+  }
+}
+
+function getToolsSheet() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TOOLS);
+  if (!sheet) return null;
+  return sheet;
+}
+
+function readTools() {
+  var sheet = getToolsSheet();
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return [];
+  return data.slice(1)
+    .filter(function(row) { return row[0] !== ''; })
+    .map(function(row) {
+      return {
+        id: String(row[0]),
+        name: String(row[1]),
+        description: String(row[2]),
+        url: String(row[3]),
+        categoryId: String(row[4]),
+        isNew: String(row[5]) === '1',
+        isExternal: String(row[0]) === 'telegram-bot'
+      };
+    });
+}
+
+function updateTool(id, data) {
+  var sheet = getToolsSheet();
+  if (!sheet) return { success: false, error: 'Лист Инструменты не найден. Запустите setup().' };
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(id)) {
+      var row = i + 1;
+      if (data.name !== undefined) sheet.getRange(row, 2).setValue(data.name);
+      if (data.description !== undefined) sheet.getRange(row, 3).setValue(data.description);
+      if (data.url !== undefined) sheet.getRange(row, 4).setValue(data.url);
+      if (data.categoryId !== undefined) sheet.getRange(row, 5).setValue(data.categoryId);
+      if (data.isNew !== undefined) sheet.getRange(row, 6).setValue(data.isNew ? '1' : '0');
+      return { success: true };
+    }
+  }
+  return { success: false, error: 'Инструмент не найден' };
 }
 
 // ── CRUD операции ────────────────────────────────────────────────

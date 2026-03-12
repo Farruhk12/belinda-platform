@@ -12,6 +12,7 @@ import {
   Users,
   User,
   Loader2,
+  Link2,
 } from "lucide-react";
 import {
   getUsers,
@@ -22,7 +23,8 @@ import {
   type AppUser,
 } from "@/services/userService";
 import { LoginPage } from "@/components/LoginPage";
-import { tools } from "@/data/tools";
+import { tools as defaultTools } from "@/data/tools";
+import { getTools } from "@/services/toolService";
 
 type FormState = {
   login: string;
@@ -45,6 +47,13 @@ export default function AdminPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [tools, setTools] = useState(defaultTools);
+
+  useEffect(() => {
+    getTools().then((apiTools) => {
+      if (apiTools.length > 0) setTools(apiTools);
+    });
+  }, []);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -162,7 +171,14 @@ export default function AdminPage() {
           </a>
           <div className="h-4 w-px bg-slate-200" />
           <h1 className="text-sm font-semibold text-slate-800">Администрация</h1>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <a
+              href="/admin/tools"
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+            >
+              <Link2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+              Ссылки на инструменты
+            </a>
             <button
               onClick={openCreate}
               className="flex items-center gap-1.5 rounded-xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--primary-hover)]"

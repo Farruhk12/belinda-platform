@@ -14,8 +14,9 @@ import { InfoBanner } from "@/components/InfoBanner";
 import { ToolCard } from "@/components/ToolCard";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import { LoginPage } from "@/components/LoginPage";
-import { categories, tools } from "@/data/tools";
+import { categories, tools as defaultTools } from "@/data/tools";
 import { getCurrentUser, type AppUser } from "@/services/userService";
+import { getTools } from "@/services/toolService";
 
 const FAVORITES_KEY = "belinda-favorites";
 
@@ -39,6 +40,7 @@ function getFavorites(): string[] {
 export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [sessionUser, setSessionUser] = useState<AppUser | null>(null);
+  const [tools, setTools] = useState(defaultTools);
   const [searchQuery, setSearchQuery] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favoritesVersion, setFavoritesVersion] = useState(0);
@@ -47,6 +49,12 @@ export default function Home() {
   useEffect(() => {
     setMounted(true);
     setSessionUser(getCurrentUser());
+  }, []);
+
+  useEffect(() => {
+    getTools().then((apiTools) => {
+      if (apiTools.length > 0) setTools(apiTools);
+    });
   }, []);
 
   const refreshFavorites = useCallback(() => {

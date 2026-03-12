@@ -50,7 +50,7 @@ export function ToolCard({
 }) {
   const [isFavorite, setIsFavorite] = useState(false);
   const category = categories.find((c) => c.id === tool.categoryId);
-  const isNew = newToolIds.includes(tool.id);
+  const isNew = tool.isNew ?? newToolIds.includes(tool.id);
   const IconComponent = category?.icon ? CATEGORY_ICONS[category.icon] : null;
 
   useEffect(() => {
